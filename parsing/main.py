@@ -1,88 +1,56 @@
+import json
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup as BS
 
+BASE_URL = 'https://www.kivano.kg'
 
-main_url = 'https://www.kivano.kg/'
+def get_soup(url:str) -> BS:
+    response = requests.get(url)
+    soup = BS(response.text, 'lxml')
+    return soup
 
-response = requests.get(main_url)
+def get_product_info(product:BS) -> dict:
+    title = product.find('div', {'class':'listbox_title'}).text.strip()
+    # print(title)
+    price = product.find('div', {'class':'listbox_price'}).text.strip().split('\n')[0]
+    # print(price)
+    image = product.find('div', {'class':'listbox_img'}).find('img').get('src')
+    # image = product.find('img').get('src')
+    # print(image)
+    return {'title':title, 'price':price, 'image':BASE_URL+image}
 
-# response = requests.get(main_url)  # отправляем запрос
-# print(response.text)  # html - str 
+def get_all_products_from_page(url:str) -> list:
+    res = []
+    soup = get_soup(url)
+    # print(soup)
+    box = soup.find('div', {'class':'list-view'})
+    # print(box)
+    products = box.find_all('div', {'class':'product_listbox'})
+  # print(len(products))
+    for product in products:
+        product_info = get_product_info(product)
+        res.append(product_info)
+    # print(res)
+    return res
 
-soup = BeautifulSoup(response.text, 'lxml')
-# print(dir(soup))
+def write_to_json(data:dict):
+    with open('db.json', 'w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False)
 
-phones_span = soup.find('span', {'id':'phones'})
-# print(phones_span.text)
-raw_phones = phones_span.text
-phones_list = []
+def get_last_page(url:str) -> int:
+    soup = get_soup(url)
+    last = soup.find('li', {'class':'last'})
+    return int(last.text)
 
-for ph in raw_phones.split('\n'):
-    # print(repr(ph))
-    clear_phone = ph.replace('\r', '').strip()
-    # print(repr(clear_phone))
-    if clear_phone:
-        phones_list.append(clear_phone)
+# def main():
+#     category = '/noutbuki'
+#     data = {}
+#     last_page = get_last_page(BASE_URL + category)
+#     for page in range(1,last_page+1):
+#         url = BASE_URL + category + '?page=' + str(page)
+#         print(url)
+#         one_page_data = get_all_products_from_page(url)
+#         data[page] = one_page_data
+#     write_to_json(data)
 
-# print(phones_list)
-
-# python3 main.py
-
-
-
-
-'====================Детализация продукта================='
-
-
-product_url = 'product/view/sotovyy-telefon-apple-iphone-14-pro-256gb-fioletovyy'
-
-response = requests.get(main_url+product_url)  # ...200
-# print(response)
-
-soup = BeautifulSoup(response.text, 'lxml')
-
-product_card = soup.find('div', {'class':'product-view'})
-# print(product_card)
-
-title = product_card.find('h1')
-# print(title)
-#  целый тег, как в html
-# <h1 itemprop="name" style="margin-left:15px; margin-bottom:5px;">Сотовый телефон Apple iPhone 14 Pro 256GB фиолетовый</h1>
-
-
-title = product_card.find('h1').text
-# print(title)
-# Сотовый телефон Apple iPhone 14 Pro 256GB фиолетовый
-
-
-# print(product_card.find_all('img'))
-# Действительно ли что мы ищем в единств экземпляре
-# Если 1 файл то можно просто find
-
-image_box = product_card.find('div', {'class':'img_full'})
-# print(image_box.find_all('img'))
-
-image = image_box.find('img').get('src')  #  С пом-ю get вытащили именно ссылку из тега
-# print(image)
-
-price = product_card.find('span', {'itemprop':'price'}).text
-# print(price)
-
-data = {'title':title, 'image':image, 'price':price}
-print(data)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# main()
